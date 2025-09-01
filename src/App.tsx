@@ -1,7 +1,99 @@
-//import React from "react"
-import { BookOpen, Settings } from "lucide-react"
+import { useState } from "react"
+import { BookOpen, HistoryIcon, Settings } from "lucide-react"
 
 export default function App() {
+  const [query, setQuery] = useState("")
+  const [chat, setChat] = useState<{ sender: string; text: string }[]>([])
+  const [history, setHistory] = useState<{ file: string; preview: string }[]>(
+    []
+  )
+  const [summary, setSummary] = useState("")
+
+  // Popular queries
+  const queries = [
+    "Can a person be arrested without a warrant in India?",
+    "What are the rights of an accused under Article 20?",
+    "Explain the concept of bail under CrPC",
+    "What is the difference between cognizable and non-cognizable offences?",
+  ]
+
+  // Handle send
+  const handleSend = async () => {
+    if (!query.trim()) return
+    setChat((prev) => [...prev, { sender: "You", text: query }])
+
+    // ---------------------------
+    // 🚀 Replace below with API call
+    /*
+    try {
+      const res = await fetch("http://localhost:5000/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      })
+      const data = await res.json()
+      const response = data.answer
+      setChat((prev) => [...prev, { sender: "AI", text: response }])
+    } catch (err) {
+      console.error("API error:", err)
+      setChat((prev) => [...prev, { sender: "AI", text: "Error: Unable to fetch answer." }])
+    }
+    */
+    // ---------------------------
+
+    setTimeout(() => {
+      const response = `Answer to: ${query}\n\nThis is a detailed explanation based on Indian law...`
+      setChat((prev) => [...prev, { sender: "AI", text: response }])
+    }, 600)
+
+    setQuery("")
+  }
+
+  // Handle Export
+  const handleExport = () => {
+    const lastAI = [...chat].reverse().find((msg) => msg.sender === "AI")
+    if (lastAI) {
+      const fileName = `legal_answer_${history.length + 1}.txt`
+      const blob = new Blob([lastAI.text], { type: "text/plain" })
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(blob)
+      link.download = fileName
+      link.click()
+
+      const preview = lastAI.text.split(" ").slice(0, 12).join(" ") + "..."
+      setHistory((prev) => [...prev, { file: fileName, preview }])
+    }
+  }
+
+  // Handle Summarize
+  const handleSummarize = async () => {
+    if (chat.length === 0) return
+    const fullText = chat.map((c) => `${c.sender}: ${c.text}`).join("\n")
+
+    // ---------------------------
+    // 🚀 Replace with API summarization
+    /*
+    try {
+      const res = await fetch("http://localhost:5000/api/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: fullText })
+      })
+      const data = await res.json()
+      setSummary(data.summary)
+    } catch (err) {
+      console.error("API error:", err)
+      setSummary("Error: Unable to generate summary.")
+    }
+    */
+    // ---------------------------
+
+    // Basic local summarizer (just takes first 2 sentences)
+    const short =
+      fullText.split(". ").slice(0, 2).join(". ") + (fullText.includes(".") ? "." : "")
+    setSummary(short)
+  }
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Sidebar */}
@@ -14,10 +106,13 @@ export default function App() {
           <button className="flex items-center gap-2 w-full text-left p-2 rounded hover:bg-zinc-800">
             <Settings size={18} /> Settings
           </button>
+          <button className="flex items-center gap-2 w-full text-left p-2 rounded hover:bg-zinc-800">
+            <HistoryIcon size={18} /> History
+          </button>
         </nav>
       </aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="flex-1 p-8">
         <h1 className="text-2xl font-bold text-center">InLaw</h1>
         <p className="text-gray-400 text-center mb-6">
@@ -25,82 +120,102 @@ export default function App() {
         </p>
 
         <div className="grid grid-cols-3 gap-6">
-          {/* Center Section */}
+          {/* Chat Section */}
           <div className="col-span-2 space-y-4">
-            {/* Popular Queries */}
-            <h2 className="text-lg font-semibold">
-              Popular Legal Queries
-            </h2>
+            <h2 className="text-lg font-semibold">Popular Legal Queries</h2>
             <div className="space-y-2">
-              <button className="w-full p-3 rounded bg-zinc-800 hover:bg-zinc-700">
-                Can a person be arrested without a warrant in India?
-              </button>
-              <button className="w-full p-3 rounded bg-zinc-800 hover:bg-zinc-700">
-                What are the rights of an accused under Article 20?
-              </button>
-              <button className="w-full p-3 rounded bg-zinc-800 hover:bg-zinc-700">
-                Explain the concept of bail under CrPC
-              </button>
-              <button className="w-full p-3 rounded bg-zinc-800 hover:bg-zinc-700">
-                What is the difference between cognizable and non-cognizable offences?
-              </button>
+              {queries.map((q, i) => (
+                <button
+                  key={i}
+                  className="w-full p-3 rounded bg-zinc-800 hover:bg-zinc-700 text-left"
+                  onClick={() => setQuery(q)}
+                >
+                  {q}
+                </button>
+              ))}
             </div>
-<br></br>
-            {/* Description */}
-            <div className="p-4 rounded bg-zinc-900 border border-zinc-700 text-gray-300 text-sm leading-relaxed">
-              Welcome to InLaw! I'm your AI legal research assistant specialized in
-              Indian law. <br />
-              Ask me about constitutional provisions, criminal procedures, civil
-              matters, or specific legal cases.
-              <br></br>
+
+            {/* Chat */}
+            <div className="p-4 rounded bg-zinc-900 border border-zinc-700 h-80 overflow-y-auto space-y-3">
+              {chat.length === 0 ? (
+                <p className="text-gray-400 text-sm">Start a conversation...</p>
+              ) : (
+                chat.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-xl max-w-xs whitespace-pre-line ${
+                      msg.sender === "You"
+                        ? "bg-indigo-600 ml-auto text-right"
+                        : "bg-zinc-800 mr-auto text-left"
+                    }`}
+                  >
+                    <p className="text-xs text-gray-300">{msg.sender}</p>
+                    <p className="mt-1">{msg.text}</p>
+                  </div>
+                ))
+              )}
             </div>
-<br></br><br></br><br></br>
-            {/* Input Box */}
+
+            {/* Input */}
             <div className="flex">
               <input
-                className="flex-1 h-12 px-2 rounded-l-lg bg-zinc-800 border border-zinc-600 focus:outline-none"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="flex-1 h-12 px-3 rounded-l-lg bg-zinc-800 border border-zinc-600 focus:outline-none"
                 placeholder="Ask about Indian law, constitutional provisions, legal procedures..."
-              />&nbsp;&nbsp;&nbsp;
-              <button className="px-6 h-12 bg-indigo-600 rounded-r-lg hover:bg-indigo-700">
+              />
+              <button
+                onClick={handleSend}
+                className="px-6 h-12 bg-indigo-600 rounded-r-lg hover:bg-indigo-700"
+              >
                 Send
               </button>
             </div>
           </div>
 
           {/* Right Section */}
-          <div className="col-span-1 p-4 rounded-xl bg-zinc-900 border border-zinc-700">
-            <h3 className="text-lg font-semibold mb-4">Legal References</h3>
-            <div className="flex gap-2 mb-4">
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">
+          <div className="col-span-1 p-4 rounded-xl bg-zinc-900 border border-zinc-700 space-y-4">
+            <h3 className="text-lg font-semibold">Legal References</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExport}
+                className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600"
+              >
                 Export
-              </button>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              <button className="px-3 py-1 bg-indigo-600 rounded hover:bg-indigo-700">
+              </button>
+              <button
+                onClick={handleSummarize}
+                className="px-3 py-1 bg-indigo-600 rounded hover:bg-indigo-700"
+              >
                 Summarize
               </button>
             </div>
-            {/* <div className="space-y-3 text-gray-300 text-sm">
-              <p>
-                <span className="font-semibold">Criminal Procedure Code</span> <br />
-                Statute 1973 <br />
-                • Section 41 <br />
-                • Section 42 <br />
-                • Section 46
-              </p>
-              <p>
-                <span className="font-semibold">Indian Constitution</span> <br />
-                1950 — <span className="text-indigo-400">Article 22</span>
-              </p>
-              <p>
-                <span className="font-semibold">Joginder Kumar v. State of UP</span> <br />
-                1994 — <span className="text-indigo-400">Supreme Court Judgment</span>
-              </p>
-            </div> */}
 
-            {/* <div className="mt-4 flex justify-between text-xs text-gray-500">
-              <span>3 References</span>
-              <span>2 High Priority</span>
-              <span>5 Sections</span>
-            </div> */}
+            {/* Export History */}
+            <div className="p-3 mt-4 rounded bg-zinc-800 border border-zinc-700 h-40 overflow-y-auto">
+              <h4 className="font-semibold text-sm mb-2">Export History</h4>
+              {history.length === 0 ? (
+                <p className="text-gray-400 text-xs">No history yet.</p>
+              ) : (
+                history.map((item, i) => (
+                  <div
+                    key={i}
+                    className="p-2 mb-2 rounded bg-zinc-900 border border-zinc-700 text-xs text-gray-300"
+                  >
+                    <p className="font-semibold">{item.file}</p>
+                    <p className="text-gray-400">{item.preview}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Summary Section */}
+            {summary && (
+              <div className="p-3 mt-4 rounded bg-zinc-800 border border-zinc-700 text-sm text-gray-300">
+                <h4 className="font-semibold mb-1">Conversation Summary</h4>
+                <p>{summary}</p>
+              </div>
+            )}
           </div>
         </div>
       </main>
